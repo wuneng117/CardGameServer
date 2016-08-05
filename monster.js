@@ -1,0 +1,4 @@
+getAtk
+isAtked
+setAtked
+reduceHp

@@ -1,8 +1,8 @@
 //加载模块
-require('type.js');
-var Duel = require('duel.js');
+require('type');
+var GameServer = require('GameServer');
 
 
-var duel = new Duel();
-duel.initSocket();
+var gameServer = new GameServer();
+gameServer.init();
 
