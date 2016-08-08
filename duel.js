@@ -36,44 +36,26 @@ function Duel()
     //-------------------------------------------------------------------------------\\
 }
 
-//添加玩家
+//添加玩家入房间
 Duel.prototype.addPlayer = function(player)
 {
+    this.addPlayerToVec(player, TEAM_COLOR_NONE);
 
-    //第一个玩家等待
-    if(this.playerVec.length === 0)
+    var data = {};
+    player.packDataAll(data);
+    //添加玩家到所有客户端
+    for(eachPlayer of this.playerVec)
     {
-        player.init(this, this.playerVec.length, TEAM_COLOR_RED);
-        this.playerVec.push(player);
-        
-        var data = {};
-        player.packDataAll(data);
-        //添加玩家自己
-        player.getGameConn().sendPacket(WC_PLAYER_ADD, data);
-    }
-    //第二个玩家开战
-    else if(this.playerVec.length === 1)
-    {
-        this.playerVec[this.playerVec.length-1].setNextPlayer(player);  //设置上一个玩家的下一个玩家为这个玩家
-        player.setNextPlayer(this.playerVec[this.playerVec.length-1]);  //设置这一个玩家的下一个玩家为上个玩家
-        player.init(this, this.playerVec.length, TEAM_COLOR_BLUE);
-        this.playerVec.push(player);
-
-        
-        //开始对战
-        this.startGame();
-
-        //同步玩家数据
-    }
-    //超过2个，观战……
-    else
-    {
-        player.init(this, this.playerVec,length, TEAM_COLOR_NONE);
-        this.playerVec.push(player);
-
-        //同步玩家数据
+        eachPlayer.getGameConn().sendPacket(WC_PLAYER_ADD, data);
     }
 
+    //将房间玩家信息发送给加入玩家
+    //////
+    ////
+    ///
+
+
+    
     //聊天窗口通知
     var param = {};
     param.message = '[系统]:用户' + player.getPlayerName() + '进入了房间.';
@@ -84,6 +66,32 @@ Duel.prototype.addPlayer = function(player)
     }
     
     return true;
+}
+
+//添加玩家到数组
+Duel.prototype.addPlayerToVec = function(player,color)
+{
+    var playerVec = this.playerVec;
+    var idx = playerVec.length;
+    player.init(this, idx, color);
+    playerVec.push(player);
+}
+
+//获取下个行动玩家
+Duel.prototype.getNextPlayer = function()
+{
+    var player = this.turnPlayer;
+    var idx;
+    {
+        idx = player.getIdx();
+        if(idx === this.playerVec.length - 1)
+            idx = 0;
+        else
+            idx++;
+    }
+    while(player.getTeamColor() === TEAM_COLOR_NONE);
+
+    this.turnPlayer = player;
 }
 
 //开始游戏
