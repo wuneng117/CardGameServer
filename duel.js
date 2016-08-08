@@ -39,13 +39,17 @@ function Duel()
 //添加玩家
 Duel.prototype.addPlayer = function(player)
 {
+
     //第一个玩家等待
     if(this.playerVec.length === 0)
     {
         player.init(this, this.playerVec.length, TEAM_COLOR_RED);
         this.playerVec.push(player);
-
-        //同步玩家数据
+        
+        var data = {};
+        player.packDataAll(data);
+        //添加玩家自己
+        player.getGameConn().sendPacket(WC_PLAYER_ADD, data);
     }
     //第二个玩家开战
     else if(this.playerVec.length === 1)
@@ -55,6 +59,7 @@ Duel.prototype.addPlayer = function(player)
         player.init(this, this.playerVec.length, TEAM_COLOR_BLUE);
         this.playerVec.push(player);
 
+        
         //开始对战
         this.startGame();
 
@@ -69,6 +74,15 @@ Duel.prototype.addPlayer = function(player)
         //同步玩家数据
     }
 
+    //聊天窗口通知
+    var param = {};
+    param.message = '[系统]:用户' + player.getPlayerName() + '进入了房间.';
+    param.isSystem = true;
+    for(tempPlayer of this.playerVec)
+    {
+        tempPlayer.getGameConn().sendPacket(WC_CHAT_ADD, param);
+    }
+    
     return true;
 }
 

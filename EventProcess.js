@@ -13,6 +13,7 @@ function EventProcess(clientConn)
     this.clientConn.registerHandler('disconnect', this.disconnect.bind(this));
     this.clientConn.registerHandler(CW_LOGIN_REQUEST, this[CW_LOGIN_REQUEST].bind(this));
     this.clientConn.registerHandler(CW_ENTERROOM_REQUEST, this[CW_ENTERROOM_REQUEST].bind(this));
+    this.clientConn.registerHandler(CW_CHAT_ADD_REQUEST, this[CW_CHAT_ADD_REQUEST].bind(this));
 }
 
 //失去客户端连接
@@ -56,6 +57,11 @@ EventProcess.prototype[CW_ENTERROOM_REQUEST] = function()
     }
 }
 
+//客户端发送聊天信息请求(以后写)
+EventProcess.prototype.CW_CHAT_ADD_REQUEST = function(msg)
+{
+    
+}
 
 
 

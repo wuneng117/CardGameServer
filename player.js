@@ -1,4 +1,16 @@
 
+var PLAYTER_UPDATE_ISTURNACTIVE = 1;
+var PLAYTER_UPDATE_HP       = 1<<1;
+var PLAYTER_UPDATE_CRITICAL = 1<<2;
+var PLAYTER_UPDATE_MAXCRITICAL = 1<<3;
+// var PLAYTER_UPDATE_ISACTIVE = 16;
+// var PLAYTER_UPDATE_ISACTIVE = 32;
+// var PLAYTER_UPDATE_ISACTIVE = 64;
+// var PLAYTER_UPDATE_ISACTIVE = 128;
+// var PLAYTER_UPDATE_ISACTIVE = 256;
+// var PLAYTER_UPDATE_ISACTIVE = 512;
+// var PLAYTER_UPDATE_ISACTIVE = 1024;
+
 function Player(gameConn)
 {
     this.gameConn = gameConn;
@@ -21,11 +33,49 @@ function Player(gameConn)
     //this.monsterSpriteArray = [];  //随从图片数组
 }
 
-//打包数据
-Player.prototype.packData = function()
+//打包数据完整
+Player.prototype.packDataAll = function(data)
 {
-    var data = {};
+    data.idx = this.idx;
+    data.temColor = this.teamColor;
+    data.isTurnActive = this.isTurnActive;
+    data.heroName = this.heroName;
+    data.hp = this.hp;
+    data.critical = this.crititcal;
+    data.maxCritical = this.maxCritical;
+}
 
+
+//打包数据
+Player.prototype.packData = function(data, flag)
+{
+    data.flag = flag;
+    data.idx = this.idx;
+
+    if(flag & PLAYTER_UPDATE_ISTURNACTIVE)
+        data.isTurnActive = this.isTurnActive;
+    if(flag & PLAYTER_UPDATE_HP)
+        data.hp = this.hp;
+    if(flag & PLAYTER_UPDATE_CRITICAL)
+        data.critical = this.critical;
+    if(flag & PLAYTER_UPDATE_MAXCRITICAL)
+        data.maxCritical = this.maxCritical;
+}
+
+
+//解开数据
+Player.prototype.unPackData = function(data)
+{
+    var flag = data.flag;
+    
+    if(flag & PLAYTER_UPDATE_ISTURNACTIVE)
+        this.isTurnActive = data.isTurnActive;
+    if(flag & PLAYTER_UPDATE_HP)
+        this.hp = data.hp;
+    if(flag & PLAYTER_UPDATE_CRITICAL)
+        this.critical = data.critical;
+    if(flag & PLAYTER_UPDATE_MAXCRITICAL)
+        this.maxCritical = data.maxCritical;
 }
 
 //初始化
@@ -85,6 +135,11 @@ Player.prototype.setDuel = function(duel)
 Player.prototype.getDuel = function()
 {
     return this.duel;
+}
+
+Player.prototype.getGameConn = function()
+{
+    return this.gameConn;
 }
 
 init
