@@ -2,8 +2,10 @@ const DBConn = require('DBConn')
 
 var ERROR_NOERROR = 0;
 
-
 var ERROR_ENTERROOM_INROOM = 1;
+var ERROR_DUELREADY_ISPLAYING = 1;
+
+
 function EventProcess(clientConn)
 {
     this.clientConn = clientConn;
@@ -14,6 +16,7 @@ function EventProcess(clientConn)
     this.clientConn.registerHandler(CW_LOGIN_REQUEST, this[CW_LOGIN_REQUEST].bind(this));
     this.clientConn.registerHandler(CW_ENTERROOM_REQUEST, this[CW_ENTERROOM_REQUEST].bind(this));
     this.clientConn.registerHandler(CW_CHAT_ADD_REQUEST, this[CW_CHAT_ADD_REQUEST].bind(this));
+    this.clientConn.registerHandler(CW_DUELREADY_REQUEST, this[CW_DUELREADY_REQUEST].bind(this));
 }
 
 //失去客户端连接
@@ -53,7 +56,7 @@ EventProcess.prototype[CW_ENTERROOM_REQUEST] = function()
     duel = server.getRestDuel();
     if(duel.addPlayer(player))
     {
-        this.clientConn.sendPacket(WC_ENTERROOM_RESPONSE, {error: 0});
+        this.clientConn.sendPacket(WC_ENTERROOM_RESPONSE, {error: 0, idx: player.getIdx()});
     }
 }
 
@@ -61,6 +64,23 @@ EventProcess.prototype[CW_ENTERROOM_REQUEST] = function()
 EventProcess.prototype.CW_CHAT_ADD_REQUEST = function(msg)
 {
     
+}
+
+//客户端发送准备游戏请求
+EventProcess.prototype.CW_DUELREADY_REQUEST = function(msg)
+{
+    var player = this.clientConn.getPlayer();
+    var duel = player.getDuel();
+    if(duel.isPlaying())
+    {
+        this.clientConn.sendPacket(WC_DUELREADY_RESPONSE, {error: ERROR_DUELREADY_ISPLAYING});
+        return;
+    }
+
+    player.getReady();
+    this.clientConn.sendPacket(WC_DUELREADY_RESPONSE, {error: 0, idx: player.getIdx()});
+
+    duel.playerGetReady();
 }
 
 

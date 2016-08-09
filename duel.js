@@ -9,6 +9,13 @@ var TEAM_COLOR_NONE = -1;
 var TEAM_COLOR_RED = 1;
 var TEAM_COLOR_BLUE = 2;
 
+//Player更新标志
+var PLAYER_UPDATE_ISTURNACTIVE = 1;
+var PLAYER_UPDATE_HP       = 1<<1;
+var PLAYER_UPDATE_CRITICAL = 1<<2;
+var PLAYER_UPDATE_MAXCRITICAL = 1<<3;
+var PLAYER_UPDATE_ISREADY = 1<<4;
+
 var tempDeck = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','A','B','C','D','E','F','G','H','I','J','K','L'];
 
 function Duel()
@@ -44,25 +51,36 @@ Duel.prototype.addPlayer = function(player)
     var data = {};
     player.packDataAll(data);
     //添加玩家到所有客户端
-    for(eachPlayer of this.playerVec)
+    for(var eachPlayer of this.playerVec)
     {
-        eachPlayer.getGameConn().sendPacket(WC_PLAYER_ADD, data);
+        eachPlayer.getClientConn().sendPacket(WC_PLAYER_ADD, data);
     }
 
     //将房间玩家信息发送给加入玩家
     //////
     ////
     ///
-
+    if(this.state === DUEL_STATE_REST)
+    {
+        for(var eachPlayer of this.playerVec)
+        {
+            if(eachPlayer.getIdx() === player.getIdx())
+                continue;
+            
+            var eachData  ={};
+            eachPlayer.packDataAll(eachdata);
+            player.getClientConn().sendPacket(WC_PLAYER_ADD, eachdata);
+        }
+    }
 
     
     //聊天窗口通知
     var param = {};
     param.message = '[系统]:用户' + player.getPlayerName() + '进入了房间.';
     param.isSystem = true;
-    for(tempPlayer of this.playerVec)
+    for(var tempPlayer of this.playerVec)
     {
-        tempPlayer.getGameConn().sendPacket(WC_CHAT_ADD, param);
+        tempPlayer.getClientConn().sendPacket(WC_CHAT_ADD, param);
     }
     
     return true;
@@ -94,11 +112,34 @@ Duel.prototype.getNextPlayer = function()
     this.turnPlayer = player;
 }
 
+//有玩家已经准备就绪
+Duel.prototype.playerGetReady = function(player)
+{
+    var readyNum = 0;
+    for(var eachPlayer of this.playerVec)
+    {
+        //统计准备人数
+        if(eachPlayer.getIsReady() === true)
+            readNum++;
+        
+        //给所有客户端发送此玩家更新
+        var data = {};
+        data.flag &= PLAYER_UPDATE_ISREADY;
+        player.packetData(data);
+        eachPlayer.getClientConn().sendPacket(WC_DUELREADY, data);
+    }
+
+    if(readNum < 2)
+        return;
+    
+    this.startGame();
+}
+
 //开始游戏
 Duel.prototype.startGame = function() 
 {
     //玩家初始化
-    for(player of this.playerVec)
+    for(var player of this.playerVec)
     {
         //player.init(this);
         player.createDeck(tempDeck);//根据牌池生成卡组
@@ -226,4 +267,11 @@ Duel.prototype.leavePhaseEnd = function()
 }
 //-------------------------------------------------------------------------------\\
 
+Duel.prototype.getPlayer = function(idx)
+{
+    return this.playerVec[idx];
+}
+
+//游戏状态
+Duel.prototype.isPlaying = function() { return this.state === DUEL_STATE_PLAYING; }
 module.exports = Duel;
