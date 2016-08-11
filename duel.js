@@ -15,6 +15,21 @@ var PLAYER_UPDATE_HP       = 1<<1;
 var PLAYER_UPDATE_CRITICAL = 1<<2;
 var PLAYER_UPDATE_MAXCRITICAL = 1<<3;
 var PLAYER_UPDATE_ISREADY = 1<<4;
+var PLAYER_UPDATE_DECKNUM = 1<<5;
+
+//Card更新标志
+var CARD_UPDATE_CARDNAME = 1<<1;
+var CARD_UPDATE_CRITICAL = 1<<2;
+var CARD_UPDATE_ATK = 1<<3;
+var CARD_UPDATE_HP = 1<<4;
+
+//Monster更新标志
+var MONSTER_UPDATE_CARDNAME = 1<<1;
+var MONSTER_UPDATE_CRITICAL = 1<<2;
+var MONSTER_UPDATE_ATK = 1<<3;
+var MONSTER_UPDATE_HP = 1<<4;
+var MONSTER_UPDATE_MAXHP = 1<<5;
+var MONSTER_UPDATE_ISATKED = 1<<6;
 
 var tempDeck = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','A','B','C','D','E','F','G','H','I','J','K','L'];
 
@@ -124,8 +139,8 @@ Duel.prototype.playerGetReady = function(player)
         
         //给所有客户端发送此玩家更新
         var data = {};
-        data.flag &= PLAYER_UPDATE_ISREADY;
-        player.packetData(data);
+        data.flag = PLAYER_UPDATE_ISREADY;
+        player.packData(data);
         eachPlayer.getClientConn().sendPacket(WC_DUELREADY, data);
     }
 
@@ -138,73 +153,196 @@ Duel.prototype.playerGetReady = function(player)
 //开始游戏
 Duel.prototype.startGame = function() 
 {
+    
+    var teamColor = TEAM_COLOR_RED;
     //玩家初始化
     for(var player of this.playerVec)
     {
-        //player.init(this);
+        if(!player.getIsReady())
+            continue;
+
         player.createDeck(tempDeck);//根据牌池生成卡组
+
+        //更新
+        var data = {};
+        data.flag = PLAYER_UPDATE_DECKNUM;
+        player.packData(data);
+        this.broadcastPacket(WC_PLAYER_UPDATE, data);
+
+        //抽3张卡
         player.drawDeck(3);
+
+        //分组
+        player.setTeamColor(teamColor);
+        this.turnPlayer = player;    
+        teamColor = TEAM_COLOR_BLUE; //设置完红的再设置为蓝的
     }
 
-    var firstIdx = Math.round(Math.random());
 
-    this.turnPlayer = this.playerVec[firstIdx];
+    //var firstIdx = Math.round(Math.random());
 
     this.turn = 0;
     this.changePhase(PHASE_BEGIN_TURN);
 
-    console.log('开始游戏')
+    console.log('开始游戏');
+    this.broadcastPacket(WC_CHAT_ADD, {message: '开始游戏',
+                                       isSystem: true});
 },
-    
-//随从攻击玩家
-Duel.prototype.monsterAtkPlayer = function(monster, player) 
+
+//玩家创建手牌(对自己和其他玩家是不同处理的，所以不能统一广播)
+Duel.prototype.handCardCreate = function(player, card)
 {
-    var atk = monster.getAtk();
-    if(!monster || atk <= 0 || monster.isAtked() === true)
+    var data = {};
+    for(var temp of this.playerVec)
+    {
+        data = {};
+        if(temp.getIdx() == player.getIdx())
+            card.packDataAll(data,false);
+        else
+            card.packDataAll(data, true);
+
+        temp.getClientConn().sendPacket(WC_HANDCARD_CREATE, {playerIdx: player.getIdx(), param: data});
+    }
+}
+
+//玩家更新手牌(对自己和其他玩家是不同处理的，所以不能统一广播)
+Duel.prototype.handCardUpdate = function(player, card, flag)
+{
+    var data = {};
+    for(var temp of this.playerVec)
+    {
+        data = {};
+        data.flag = flag;
+        if(temp.getIdx() == player.getIdx())
+            card.packData(data, flag, false);
+        else
+            card.packData(data, flag, true);
+
+        temp.getClientConn().sendPacket(WC_HANDCARD_UPDATE, {playerIdx: player.getIdx(), param: data});
+    }
+}
+
+//随从攻击玩家
+Duel.prototype.monsterAtkPlayer = function(player, idx, targetPlayerIdx) 
+{
+    if(!player.getTurnActive())
         return;
-            
-    monster.setAtked(true);
-    player.reduceHp(atk);
-    player.refreshMonsterField();
     
-    //showTipLabel(monster._player.heroName + '的' + monster.cardName + ' 攻击了玩家 ' + player.heroName);
+    if(player.getIdx() === targetPlayerIdx)
+        return;
+    
+    var targetPlayer = this.playerVec[targetPlayerIdx];
+    if(!targetPlayer)
+        return;
+    
+    var monster = player.getMonster(idx);
+
+    if(!monster || monster.atk <= 0 || monster.isAtked === true || monster.isDead())
+        return;
+
+    this.broadcastPacket(WC_CHAT_ADD, {message: player.getPlayerName() + ' 的随从 ' + monster.cardName + ' 攻击了 ' + targetPlayer.getPlayerName(),
+                                    isSystem: true});
+     
+    monster.setAtked(true);
+
+    targetPlayer.reduceHp(atk);
 
     this.checkWin();
 }
     
 //随从攻击随从
-Duel.prototype.monsterAtkMonster = function(src, dest) 
+Duel.prototype.monsterAtkMonster = function(player, idx, targetPlayerIdx, targetMonsterIdx) 
 {
-    var atk = src.getAtk();
-    if(!src || !dest || atk <= 0 || src.isAtked() === true)
+    if(!player.getTurnActive())
         return;
-
-    srcsetAtked(true);
-    dest.reduceHp(atk);
-
-    var damage = dest.getAtk();
-    src.reduceHp(damage);
     
-    //showTipLabel(src._player.heroName + '的' + src.cardName + ' 攻击了 ' + dest._player.heroName + '的' + dest.cardName, cc.Color.RED);
+    if(player.getIdx() === targetPlayerIdx)
+        return;
+    
+    var targetPlayer = this.playerVec[targetPlayerIdx];
+    if(!targetPlayer)
+        return;
+    
+    var monster = player.getMonster(idx);
+
+    if(!monster || monster.atk <= 0 || monster.isAtked === true || monster.isDead())
+        return;
+    
+    var targetMonster = targetPlayer.getMonster(targetMonsterIdx);
+    if(!targetMonster || targetMonster.isDead())
+        return;
+    
+    this.broadcastPacket(WC_CHAT_ADD, {message: player.getPlayerName() + ' 的随从 ' + monster.cardName + ' 攻击了 ' + 
+                                                targetPlayer.getPlayerName() + '的随从 ' + targetMonster.cardName +',',
+                                        isSystem: true});
+     
+
+    monster.setAtked(true);
+    monster.reduceHp(targetMonster.atk);
+
+    this.broadcastPacket(WC_CHAT_ADD, {message: player.getPlayerName() + ' 的随从 ' + monster.cardName + ' 收到了' + targetMonster.atk + '伤害',
+                                       isSystem: true});
+    targetMonster.reduceHp(monster.atk);
+    this.broadcastPacket(WC_CHAT_ADD, {message: targetPlayer.getPlayerName() + ' 的随从 ' + targetMonster.cardName + ' 收到了' + monster.atk + '伤害',
+                                       isSystem: true});
 },
     
 //判断输赢
 Duel.prototype.checkWin = function() 
 {
-    var hp0 = this.playerVec[0].getHp();
-    var hp1 = this.playerVec[1].getHp();
+    var tempVec = [];
+
+    for(var player of this.playerVec)
+    {
+        if(player.getIsReady())
+            temVec.push(player);
+    }
+
+    var hp0 = tempVec[0].getHp();
+    var hp1 = tempVec[1].getHp();
 
     if(hp0 <= 0 && hp1 <= 0)
     {
-        //showTipLabel("平局");
+        for(var player of this.playerVec)
+        {
+            player.setTurnActive(false);
+
+            var data = {};
+            data.flag = PLAYER_UPDATE_ISTURNACTIVE;
+            player.packData(data);
+            player.getClientConn().sendPacket(WC_PLAYER_UPDATE, data);
+        }
+
+        this.broadcastPacket(WC_CHAT_ADD, {message: '游戏平局', isSystem: true});
     }
     else if(hp0 <= 0)
     {
-        //showTipLabel("%s 胜利", this.opponentPlayer.heroName);
+        for(var player of this.playerVec)
+        {
+            player.setTurnActive(false);
+
+            var data = {};
+            data.flag = PLAYER_UPDATE_ISTURNACTIVE;
+            player.packData(data);
+            player.getClientConn().sendPacket(WC_PLAYER_UPDATE, data);
+        }
+
+        this.broadcastPacket(WC_CHAT_ADD, {message: tempVec[0].getPlayerName() + '的胜利', isSystem: true});
     }
     else if(hp1 <= 0)
     {
-        //showTipLabel("% 胜利", this.turnPlayer.heroName);
+        for(var player of this.playerVec)
+        {
+            player.setTurnActive(false);
+
+            var data = {};
+            data.flag = PLAYER_UPDATE_ISTURNACTIVE;
+            player.packData(data);
+            player.getClientConn().sendPacket(WC_PLAYER_UPDATE, data);
+        }
+
+        this.broadcastPacket(WC_CHAT_ADD, {message: tempVec[1].getPlayerName() + '的胜利', isSystem: true});
+
     }
 },
 
@@ -214,6 +352,20 @@ Duel.prototype.changeTurnPlayer = function()
     this.turnPlayer.setTurnActive(false);    //不可行动
     this.turnPlayer = this.turnPlayer.getNextPlayer();
     this.turnPlayer.setTurnActive(true);    //可行动
+
+    var data = {};
+    data.flag = PLAYER_UPDATE_ISTURNACTIVE;
+    this.turnPlayer.packData(data);
+    this.turnPlayer.getClientConn().sendPacket(WC_PLAYER_UPDATE, data);
+}
+
+//向所有玩家广播消息
+Duel.prototype.broadcastPacket = function(msg, param)
+{
+    for(var player of this.playerVec)
+    {
+        player.getClientConn().sendPacket(msg, param);
+    }
 }
 
 //-----------------------------回合阶段执行函数---------------------------------\\
@@ -222,7 +374,8 @@ Duel.prototype.enterPhaseBegin = function()
         console.log('enterPhaseBegin');
         ++this.turn;
         this.changeTurnPlayer();
-        console.log(this.turnPlayer.getPlayerName() + '的回合');
+        this.broadcastPacket(WC_CHAT_ADD, {message: this.turnPlayer.getPlayerName() + ' 的回合',
+                                           isSystem: true});
 
         this.turnPlayer.criticalPlus(1);        //增加水晶
         this.turnPlayer.criticalRecover();      //回复水晶
@@ -253,6 +406,11 @@ Duel.prototype.enterPhaseEnd = function()
 Duel.prototype.leavePhaseEnd = function()
 {      
     this.turnPlayer.setTurnActive(false);
+
+    var data = {};
+    data.flag = PLAYER_UPDATE_ISTURNACTIVE;
+    this.turnPlayer.packData(data);
+    this.turnPlayer.getClientConn().sendPacket(WC_PLAYER_UPDATE, data);
 }
         
  Duel.prototype.changePhase = function(nextState) 

@@ -1,5 +1,6 @@
 const ClientConn = require('ClientConn');
 const Duel = require('duel');
+const CardDataManager = require('CardDataManager');
 
 var MAX_DUEL_NUM = 1;
 
@@ -16,8 +17,16 @@ function GameServer()
 //初始化
 GameServer.prototype.init = function()
 {
+    this.initData();
     this.initDuel();
     this.initSocket();
+}
+
+//初始化数据
+GameServer.prototype.initData = function()
+{
+    global.gCardDataManager = new CardDataManager();
+    gCardDataManager.init();
 }
 
 //初始化网络

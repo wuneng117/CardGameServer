@@ -17,6 +17,9 @@ function EventProcess(clientConn)
     this.clientConn.registerHandler(CW_ENTERROOM_REQUEST, this[CW_ENTERROOM_REQUEST].bind(this));
     this.clientConn.registerHandler(CW_CHAT_ADD_REQUEST, this[CW_CHAT_ADD_REQUEST].bind(this));
     this.clientConn.registerHandler(CW_DUELREADY_REQUEST, this[CW_DUELREADY_REQUEST].bind(this));
+    this.clientConn.registerHandler(CW_MONSTER_SUMMON_REQUEST, this[CW_MONSTER_SUMMON_REQUEST].bind(this));
+    this.clientConn.registerHandler(CW_MONSTER_ATTACKPLAYER_REQUEST, this[CW_MONSTER_ATTACKPLAYER_REQUEST].bind(this));
+    this.clientConn.registerHandler(CW_MONSTER_ATTACKMONSTER_REQUEST, this[CW_MONSTER_ATTACKMONSTER_REQUEST].bind(this));
 }
 
 //失去客户端连接
@@ -79,9 +82,36 @@ EventProcess.prototype.CW_DUELREADY_REQUEST = function(msg)
 
     player.getReady();
     this.clientConn.sendPacket(WC_DUELREADY_RESPONSE, {error: 0, idx: player.getIdx()});
-
+    
     duel.playerGetReady();
 }
+
+//客户端发送随从召唤请求
+EventProcess.prototype.CW_MONSTER_SUMMON_REQUEST = function(msg)
+{
+    var player = this.clientConn.getPlayer();
+    if(!player.getTurnActive())
+        return;
+    
+    player.summonMonster(msg);
+}
+
+//客户端发送随从攻击玩家请求
+EventProcess.prototype.CW_MONSTER_ATTACKPLAYER_REQUEST = function(msg)
+{ 
+    var player = this.clientConn.getPlayer();
+    var duel = player.getDuel();
+    duel.monsterAtkPlayer(player, msg.idx, msg.targetPlayerIdx);
+}
+
+//客户端发送随从攻击随从请求
+EventProcess.prototype.CW_MONSTER_ATTACKMONSTER_REQUEST = function(msg)
+{
+    var player = this.clientConn.getPlayer();
+    var duel = player.getDuel();
+    duel.monsterAtkMonster(player, msg.idx, msg.targetPlayerIdx, msg.targetMonsterIdx);
+}
+
 
 
 

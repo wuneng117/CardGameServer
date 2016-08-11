@@ -1,9 +1,12 @@
+const Card = require('Card')
+const Monster = require('Monster')
 
 var PLAYER_UPDATE_ISTURNACTIVE = 1;
 var PLAYER_UPDATE_HP       = 1<<1;
 var PLAYER_UPDATE_CRITICAL = 1<<2;
 var PLAYER_UPDATE_MAXCRITICAL = 1<<3;
 var PLAYER_UPDATE_ISREADY = 1<<4;
+var PLAYER_UPDATE_DECKNUM = 1<<5;
 // var PLAYTER_UPDATE_ISACTIVE = 16;
 // var PLAYTER_UPDATE_ISACTIVE = 32;
 // var PLAYTER_UPDATE_ISACTIVE = 64;
@@ -24,7 +27,8 @@ function Player(clientConn)
     this.hp = 30;         //英雄生命值
     this.critical = 0;    //英雄当前水晶数
     this.maxCritical = 0; //英雄当前回合最大水晶数
-    
+    this.deckNum = 30;    //牌组剩余卡牌
+
     this.deckArray = [];  //卡组数组（Card类型）
     this.handArray = [];  //手牌数组（Card类型）
     this.fieldArray = []; //场上随从数组（CardMonster类型）
@@ -44,6 +48,7 @@ Player.prototype.packDataAll = function(data)
     data.hp = this.hp;
     data.critical = this.crititcal;
     data.maxCritical = this.maxCritical;
+    data.deckNum = this.deckNum;
 }
 
 //解开数据完整
@@ -57,6 +62,7 @@ Player.prototype.unPackDataAll = function(data)
     this.hp = data.hp;
     this.crititcal = data.critical;
     this.maxCritical = data.maxCritical;
+    this.deckNum = data.deckNum;
 }
 
 //打包数据
@@ -75,6 +81,8 @@ Player.prototype.packData = function(data, flag)
         data.maxCritical = this.maxCritical;    
     if(flag & PLAYER_UPDATE_ISREADY)
         data.isReady = this.isReady;
+    if(flag & PLAYER_UPDATE_DECKNUM)
+        data.deckNum = this.deckNum;
 }
 
 
@@ -93,6 +101,8 @@ Player.prototype.unPackData = function(data)
         this.maxCritical = data.maxCritical;
     if(flag & PLAYER_UPDATE_ISREADY)
         this.isReady = data.isReady;
+    if(flag & PLAYER_UPDATE_DECKNUM)
+        this.deckNum = data.deckNum;
 
 }
 
@@ -108,6 +118,7 @@ Player.prototype.init = function(duel, idx, teamColor)
     this.hp = 30;         
     this.critical = 0;    
     this.maxCritical = 0;
+    this.deckNum = 30;
 
     this.deckArray = [];
     this.handArray = []; 
@@ -121,18 +132,223 @@ Player.prototype.getReady = function()
     var data = {};
     data.flag = PLAYER_UPDATE_ISREADY;
     this.packData(data);
-    this.clientConn.sendPacket(WC_PLAYER_UPDATE, data);
+    this.duel.broadcastPacket(WC_PLAYER_UPDATE, data);
 }
-// //设置下个玩家
-// Player.prototype.setNextPlayer = function(next)
-// {
-//     this.nextPlayer = next;
-// }
 
-// Player.prototype.getNextPlayer = function()
-// {
-//     return this.nextPlayer;
-// }
+//根据牌池随机创建卡组
+Player.prototype.createDeck = function(cardArray) 
+{
+    var deckArray = this.deckArray;
+    
+    for(var i=0; i<30; ++i)
+    {
+        deckArray[i] = new Card();
+        var randomKey = cardArray[Math.floor(Math.random()*cardArray.length)];
+        var cardData = CardDataManager.cardMap[randomKey];
+        deckArray[i].init(cardData, this, i);
+    }
+
+    this.deckNum = deckArray.length;
+}
+    
+//水晶回复
+Player.prototype.criticalRecover = function() 
+{
+    this.critical = this.maxCritical;
+
+    var data = {};
+    data.flag = PLAYER_UPDATE_CRITICAL;
+    this.packData(data);
+    this.duel.broadcastPacket(WC_PLAYER_UPDATE, data);
+    //this.refreshcriticalsprite();   //刷新水晶图片
+}
+
+//水晶增加
+Player.prototype.criticalPlus = function(num) 
+{
+    this.maxCritical += num;
+    this.critical += num;
+    if(this.maxCritical > 10)
+        this.maxCritical = 10;
+    if(this.critical > 10)
+        this.critical = 10;
+    //this.refreshcriticalsprite();   //刷新水晶图片
+
+    var data = {};
+    data.flag = PLAYER_UPDATE_CRITICAL & PLAYER_UPDATE_MAXCRITICAL;
+    this.packData(data);
+    this.duel.broadcastPacket(WC_PLAYER_UPDATE, data);
+},
+
+//重置随从攻击次数
+Player.prototype.awakenMonster = function() 
+{
+    var fieldArray = this.fieldArray;
+    
+    for(var i=0; i<fieldArray.length; ++i)
+    {
+        fieldArray[i].isAtked = false;
+    }
+    
+    this.refreshMonsterField();
+},
+
+//扣除HP
+Player.prototype.reduceHp = function(num) 
+{
+    if(num <= 0)
+        return;
+    
+    this.hp -= num;
+
+    var data = {};
+    data.flag = PLAYER_UPDATE_HP;
+    this.packData(data);
+    this.duel.broadcastPacket(WC_PLAYER_UPDATE, data);
+}
+
+//回复HP
+Player.prototype.addHp = function(num) 
+{
+    if(num <= 0)
+        return;
+        
+    this.hp+= num;
+    if(this.hp > 30)
+        this.hp = 30;
+    
+    var data = {};
+    data.flag = PLAYER_UPDATE_HP;
+    this.packData(data);
+    this.duel.broadcastPacket(WC_PLAYER_UPDATE, data);
+}
+
+//创建手牌
+Player.prototype.createCardToHand = function(card) 
+{
+    //游戏信息
+    this.broadcastPacket(WC_CHAT_ADD, {message: player.getPlayerName() + '抽了一张牌',
+                                       isSystem: true});
+
+    //超过10张就爆炸
+    if(this.handArray.length >= 10)
+    {
+        return;
+    }
+    
+    //改变序号，加入手牌数组
+    card.idx = this.handArray.length;
+    this.handArray.push(card);
+
+    this.duel.handCardCreate(this, card);   //通知客户端玩家创建手牌
+},
+
+//抽牌
+Player.prototype.drawDeck = function(num) 
+{
+    var deckArray = this.deckArray;
+    
+    if(deckArray.length > 0)
+    {
+        var card = deckArray.pop();
+        this.createCardToHand(card);
+
+        //更新牌组剩余牌
+        var data = {};
+        data.flag = PLAYER_UPDATE_DECKNUM;
+        this.packData(data);
+        this.duel.broadcastPacket(WC_PLAYER_UPDATE, data);
+    }
+    else
+    {
+        this.reduceHp(1);
+        //showTipLabel(this.heroName + " 的牌库没牌了，抽1张少1HP");
+    }
+    
+    if(num<=1)
+    {
+        this.duel.checkWin();
+    }
+    else
+    {
+        this.drawDeck(num-1);
+    }
+}
+
+//召唤随从
+Player.prototype.summerMonster = function(cardIdx) 
+{
+    //如果随从已满返回
+    if(this.fieldArray.length > 7)
+        return false;
+        
+    var card = this.handArray[cardIdx]; //获取卡牌对象
+    if(!card)
+        return;
+
+    var critical = card.critical;
+    //如果水晶不够返回
+    if(critical > this.critical)
+    {
+        //showTipLabel(this.heroName + " 只有 " + this.critical + ' 个水晶,不能召唤费用为' + critical + ' 的 ' + card.cardName + ' 到场上');
+        return false;
+    }
+
+    this.critical -= critical;
+    var data = {};
+    data.flag = PLAYER_UPDATE_CRITICAL;
+    this.packData(data);
+    this.duel.broadcastPacket(WC_PLAYER_UPDATE, data);
+    
+    //创建随从对象并加入随从数组
+    var monster = new Monster();
+    monster.init(card, this, this.fieldArray.length);
+    this.fieldArray.push(monster);
+    //游戏信息
+    this.broadcastPacket(WC_CHAT_ADD, {message: player.getPlayerName() + ' 召唤了1只 ' + monster.cardName,
+                                       isSystem: true});
+
+    var data = {};
+    this.packDataAll(data);
+    this.duel.broadcastPacket(WC_MONSTER_CREATE, {playerIdx: this.idx, param: data});
+                          
+                            
+    //删除手牌
+    this.handArray.splice(idx,1);
+    this.duel.broadcastPacket(WC_HANDCARD_DELETE, {playerIdx: this.idx, idx: idx});
+    this.refreshHandIdx(this.handArray);
+}
+
+//干掉随从
+Player.prototype.killMonster = function(idx) 
+{    
+    this.handArray.splice(idx,1);
+    this.duel.broadcastPacket(WC_HANDCARD_DELETE, {playerIdx: this.idx, idx: idx});
+    this.refreshMonsterIdx(this.handArray);
+},
+
+//数组变动后需要刷新idx
+Player.prototype.refreshHandIdx = function() 
+{
+    for(var i=0; i<this.handArray.length; ++i)
+    {
+        this.handArray[i].idx = i;
+        this.duel.handCardUpdate(this, this.handArray[i], 0);
+    }
+},
+
+Player.prototype.refreshMonsterIdx = function() 
+{
+    for(var i=0; i<this.fieldArray.length; ++i)
+    {
+        this.fieldArray[i].idx = i;
+        
+        var data = {};
+        data.flag = 0;
+        this.fieldArray[i].packData(data);
+        this.duel.broadcastPacket(WC_MONSTER_UPDATE, {playerIdx: this.idx, idx: i});
+    }
+},
 
 //设置是否行动回合
 Player.prototype.setTurnActive = function(isActive) { this.isTurnActive = isActive; }
@@ -159,12 +375,8 @@ Player.prototype.getTeamColor = function() { return this.teamColor; }
 //设置玩家准备游戏
 Player.prototype.getIsReady = function() { return this.isReady; }
 
-init
-createDeck
-drawDeck
-reduceHp
-refreshMonsterField
-getHp
+//获取玩家随从
+ Player.prototype.getMonster = function(idx) {return this.fieldArray[idx]; }
 
 module.exports = Player;
 
