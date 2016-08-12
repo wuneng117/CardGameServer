@@ -48,13 +48,13 @@ function Duel()
     this.enterTurnFunc = [];
     this.leaveTurnFunc= [];
 
-    this.enterTurnFunc[PHASE_BEGIN_TURN] = this.enterPhaseBegin.bind(this);
-    this.enterTurnFunc[PHASE_MAIN_TURN] = this.enterPhaseMain.bind(this);
-    this.enterTurnFunc[PHASE_END_TURN] = this.enterPhaseEnd.bind(this);
+    this.enterTurnFunc[PHASE_BEGIN_TURN] = Duel.prototype.enterPhaseBegin.bind(this);
+    this.enterTurnFunc[PHASE_MAIN_TURN] = Duel.prototype.enterPhaseMain.bind(this);
+    this.enterTurnFunc[PHASE_END_TURN] = Duel.prototype.enterPhaseEnd.bind(this);
     
-    this.leaveTurnFunc[PHASE_BEGIN_TURN] = this.leaveBeginTurn.bind(this);
-    this.leaveTurnFunc[PHASE_MAIN_TURN] = this.leaveMainTurn.bind(this);
-    this.leaveTurnFunc[PHASE_END_TURN] = this.leaveEndTurn.bind(this);
+    this.leaveTurnFunc[PHASE_BEGIN_TURN] = Duel.prototype.leavePhaseBegin.bind(this);
+    this.leaveTurnFunc[PHASE_MAIN_TURN] = Duel.prototype.leavePhaseMain.bind(this);
+    this.leaveTurnFunc[PHASE_END_TURN] = Duel.prototype.leavePhaseEnd.bind(this);
     //-------------------------------------------------------------------------------\\
 }
 
@@ -83,15 +83,23 @@ Duel.prototype.addPlayer = function(player)
                 continue;
             
             var eachData  ={};
-            eachPlayer.packDataAll(eachdata);
-            player.getClientConn().sendPacket(WC_PLAYER_ADD, eachdata);
+            eachPlayer.packDataAll(eachData);
+            player.getClientConn().sendPacket(WC_PLAYER_ADD, eachData);
+            
+            //如果玩家已经就坐发送就做信息
+            if(eachPlayer.getIsReady() === true)
+            {
+                eachData = {};
+                eachPlayer.packData(data, PLAYER_UPDATE_ISREADY);
+                player.getClientConn().sendPacket(WC_DUELREADY, data);
+            }
         }
     }
 
     
     //聊天窗口通知
     var param = {};
-    param.message = '[系统]:用户' + player.getPlayerName() + '进入了房间.';
+    param.message = '用户' + player.getPlayerName() + '进入了房间.';
     param.isSystem = true;
     for(var tempPlayer of this.playerVec)
     {
@@ -135,16 +143,15 @@ Duel.prototype.playerGetReady = function(player)
     {
         //统计准备人数
         if(eachPlayer.getIsReady() === true)
-            readNum++;
+            readyNum++;
         
         //给所有客户端发送此玩家更新
         var data = {};
-        data.flag = PLAYER_UPDATE_ISREADY;
-        player.packData(data);
+        player.packData(data, PLAYER_UPDATE_ISREADY);
         eachPlayer.getClientConn().sendPacket(WC_DUELREADY, data);
     }
 
-    if(readNum < 2)
+    if(readyNum < 2)
         return;
     
     this.startGame();
@@ -212,7 +219,6 @@ Duel.prototype.handCardUpdate = function(player, card, flag)
     for(var temp of this.playerVec)
     {
         data = {};
-        data.flag = flag;
         if(temp.getIdx() == player.getIdx())
             card.packData(data, flag, false);
         else
@@ -295,7 +301,7 @@ Duel.prototype.checkWin = function()
     for(var player of this.playerVec)
     {
         if(player.getIsReady())
-            temVec.push(player);
+            tempVec.push(player);
     }
 
     var hp0 = tempVec[0].getHp();
@@ -308,8 +314,7 @@ Duel.prototype.checkWin = function()
             player.setTurnActive(false);
 
             var data = {};
-            data.flag = PLAYER_UPDATE_ISTURNACTIVE;
-            player.packData(data);
+            player.packData(data, PLAYER_UPDATE_ISTURNACTIVE);
             player.getClientConn().sendPacket(WC_PLAYER_UPDATE, data);
         }
 
@@ -322,8 +327,7 @@ Duel.prototype.checkWin = function()
             player.setTurnActive(false);
 
             var data = {};
-            data.flag = PLAYER_UPDATE_ISTURNACTIVE;
-            player.packData(data);
+            player.packData(data, PLAYER_UPDATE_ISTURNACTIVE);
             player.getClientConn().sendPacket(WC_PLAYER_UPDATE, data);
         }
 
@@ -336,8 +340,7 @@ Duel.prototype.checkWin = function()
             player.setTurnActive(false);
 
             var data = {};
-            data.flag = PLAYER_UPDATE_ISTURNACTIVE;
-            player.packData(data);
+            player.packData(data, PLAYER_UPDATE_ISTURNACTIVE);
             player.getClientConn().sendPacket(WC_PLAYER_UPDATE, data);
         }
 
@@ -350,12 +353,11 @@ Duel.prototype.checkWin = function()
 Duel.prototype.changeTurnPlayer = function() 
 {
     this.turnPlayer.setTurnActive(false);    //不可行动
-    this.turnPlayer = this.turnPlayer.getNextPlayer();
+    this.getNextPlayer();
     this.turnPlayer.setTurnActive(true);    //可行动
 
     var data = {};
-    data.flag = PLAYER_UPDATE_ISTURNACTIVE;
-    this.turnPlayer.packData(data);
+    this.turnPlayer.packData(data, PLAYER_UPDATE_ISTURNACTIVE);
     this.turnPlayer.getClientConn().sendPacket(WC_PLAYER_UPDATE, data);
 }
 
@@ -408,8 +410,7 @@ Duel.prototype.leavePhaseEnd = function()
     this.turnPlayer.setTurnActive(false);
 
     var data = {};
-    data.flag = PLAYER_UPDATE_ISTURNACTIVE;
-    this.turnPlayer.packData(data);
+    this.turnPlayer.packData(data, PLAYER_UPDATE_ISTURNACTIVE);
     this.turnPlayer.getClientConn().sendPacket(WC_PLAYER_UPDATE, data);
 }
         
@@ -420,7 +421,7 @@ Duel.prototype.leavePhaseEnd = function()
         this.leaveTurnFunc[this.phaseState]();
     }
     
-    this.enterTurnFunc[nextTurnType]();
+    this.enterTurnFunc[nextState]();
     this.phaseState = nextState;
 }
 //-------------------------------------------------------------------------------\\

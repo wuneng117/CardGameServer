@@ -128,11 +128,6 @@ Player.prototype.init = function(duel, idx, teamColor)
 Player.prototype.getReady = function()
 {
     this.isReady = true;
-    //发送更新
-    var data = {};
-    data.flag = PLAYER_UPDATE_ISREADY;
-    this.packData(data);
-    this.duel.broadcastPacket(WC_PLAYER_UPDATE, data);
 }
 
 //根据牌池随机创建卡组
@@ -144,7 +139,7 @@ Player.prototype.createDeck = function(cardArray)
     {
         deckArray[i] = new Card();
         var randomKey = cardArray[Math.floor(Math.random()*cardArray.length)];
-        var cardData = CardDataManager.cardMap[randomKey];
+        var cardData = gCardDataManager.cardMap[randomKey];
         deckArray[i].init(cardData, this, i);
     }
 
@@ -157,8 +152,7 @@ Player.prototype.criticalRecover = function()
     this.critical = this.maxCritical;
 
     var data = {};
-    data.flag = PLAYER_UPDATE_CRITICAL;
-    this.packData(data);
+    this.packData(data, PLAYER_UPDATE_CRITICAL);
     this.duel.broadcastPacket(WC_PLAYER_UPDATE, data);
     //this.refreshcriticalsprite();   //刷新水晶图片
 }
@@ -175,8 +169,7 @@ Player.prototype.criticalPlus = function(num)
     //this.refreshcriticalsprite();   //刷新水晶图片
 
     var data = {};
-    data.flag = PLAYER_UPDATE_CRITICAL & PLAYER_UPDATE_MAXCRITICAL;
-    this.packData(data);
+    this.packData(data, PLAYER_UPDATE_CRITICAL & PLAYER_UPDATE_MAXCRITICAL);
     this.duel.broadcastPacket(WC_PLAYER_UPDATE, data);
 },
 
@@ -187,10 +180,8 @@ Player.prototype.awakenMonster = function()
     
     for(var i=0; i<fieldArray.length; ++i)
     {
-        fieldArray[i].isAtked = false;
+        fieldArray[i].setAtked(false);
     }
-    
-    this.refreshMonsterField();
 },
 
 //扣除HP
@@ -202,8 +193,7 @@ Player.prototype.reduceHp = function(num)
     this.hp -= num;
 
     var data = {};
-    data.flag = PLAYER_UPDATE_HP;
-    this.packData(data);
+    this.packData(data, PLAYER_UPDATE_HP);
     this.duel.broadcastPacket(WC_PLAYER_UPDATE, data);
 }
 
@@ -218,8 +208,7 @@ Player.prototype.addHp = function(num)
         this.hp = 30;
     
     var data = {};
-    data.flag = PLAYER_UPDATE_HP;
-    this.packData(data);
+    this.packData(data, PLAYER_UPDATE_HP);
     this.duel.broadcastPacket(WC_PLAYER_UPDATE, data);
 }
 
@@ -227,7 +216,7 @@ Player.prototype.addHp = function(num)
 Player.prototype.createCardToHand = function(card) 
 {
     //游戏信息
-    this.broadcastPacket(WC_CHAT_ADD, {message: player.getPlayerName() + '抽了一张牌',
+    this.duel.broadcastPacket(WC_CHAT_ADD, {message: this.getPlayerName() + '抽了一张牌',
                                        isSystem: true});
 
     //超过10张就爆炸
@@ -253,10 +242,11 @@ Player.prototype.drawDeck = function(num)
         var card = deckArray.pop();
         this.createCardToHand(card);
 
+        --this.deckNum;
+
         //更新牌组剩余牌
         var data = {};
-        data.flag = PLAYER_UPDATE_DECKNUM;
-        this.packData(data);
+        this.packData(data, PLAYER_UPDATE_DECKNUM);
         this.duel.broadcastPacket(WC_PLAYER_UPDATE, data);
     }
     else
@@ -276,7 +266,7 @@ Player.prototype.drawDeck = function(num)
 }
 
 //召唤随从
-Player.prototype.summerMonster = function(cardIdx) 
+Player.prototype.summonMonster = function(cardIdx) 
 {
     //如果随从已满返回
     if(this.fieldArray.length > 7)
@@ -296,8 +286,7 @@ Player.prototype.summerMonster = function(cardIdx)
 
     this.critical -= critical;
     var data = {};
-    data.flag = PLAYER_UPDATE_CRITICAL;
-    this.packData(data);
+    this.packData(data, PLAYER_UPDATE_CRITICAL);
     this.duel.broadcastPacket(WC_PLAYER_UPDATE, data);
     
     //创建随从对象并加入随从数组
@@ -305,16 +294,16 @@ Player.prototype.summerMonster = function(cardIdx)
     monster.init(card, this, this.fieldArray.length);
     this.fieldArray.push(monster);
     //游戏信息
-    this.broadcastPacket(WC_CHAT_ADD, {message: player.getPlayerName() + ' 召唤了1只 ' + monster.cardName,
+    this.duel.broadcastPacket(WC_CHAT_ADD, {message: this.getPlayerName() + ' 召唤了1只 ' + monster.cardName,
                                        isSystem: true});
 
     var data = {};
-    this.packDataAll(data);
+    monster.packDataAll(data);
     this.duel.broadcastPacket(WC_MONSTER_CREATE, {playerIdx: this.idx, param: data});
                           
                             
     //删除手牌
-    this.handArray.splice(idx,1);
+    this.handArray.splice(cardIdx,1);
     this.duel.broadcastPacket(WC_HANDCARD_DELETE, {playerIdx: this.idx, idx: idx});
     this.refreshHandIdx(this.handArray);
 }
@@ -344,8 +333,7 @@ Player.prototype.refreshMonsterIdx = function()
         this.fieldArray[i].idx = i;
         
         var data = {};
-        data.flag = 0;
-        this.fieldArray[i].packData(data);
+        this.fieldArray[i].packData(data, 0);
         this.duel.broadcastPacket(WC_MONSTER_UPDATE, {playerIdx: this.idx, idx: i});
     }
 },
@@ -377,6 +365,9 @@ Player.prototype.getIsReady = function() { return this.isReady; }
 
 //获取玩家随从
  Player.prototype.getMonster = function(idx) {return this.fieldArray[idx]; }
+
+//获取玩家HP
+Player.prototype.getHp = function() { return this.hp; }
 
 module.exports = Player;
 

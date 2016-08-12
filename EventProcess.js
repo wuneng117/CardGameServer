@@ -83,7 +83,7 @@ EventProcess.prototype.CW_DUELREADY_REQUEST = function(msg)
     player.getReady();
     this.clientConn.sendPacket(WC_DUELREADY_RESPONSE, {error: 0, idx: player.getIdx()});
     
-    duel.playerGetReady();
+    duel.playerGetReady(player);
 }
 
 //客户端发送随从召唤请求

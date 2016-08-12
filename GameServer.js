@@ -64,7 +64,7 @@ GameServer.prototype.initDuel = function()
     for(var i=0; i<MAX_DUEL_NUM; ++i)
     {
         var duel = new Duel();
-        duel.init();
+        //duel.init();
         this.duelVec.push(duel);
     }
 }

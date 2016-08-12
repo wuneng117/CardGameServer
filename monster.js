@@ -115,8 +115,7 @@ Monster.prototype.reduceHp = function(num)
     else
     {
         var data = {};
-        data.flag = MONSTER_UPDATE_HP;
-        this.packData(data);
+        this.packData(data, MONSTER_UPDATE_HP);
         this.player.getDuel().broadcastPacket(WC_MONSTER_UPDATE, {playerIdx: this.player.getIdx(), param: data});
     }
 }
@@ -132,8 +131,7 @@ Monster.prototype.addHp = function(num)
         this.hp = this.maxHp;
     
     var data = {};
-    data.flag = MONSTER_UPDATE_HP;
-    this.packData(data);
+    this.packData(data, MONSTER_UPDATE_HP);
     this.player.getDuel().broadcastPacket(WC_MONSTER_UPDATE, {playerIdx: this.player.getIdx(), param: data});
 }
 
@@ -154,7 +152,8 @@ Monster.prototype.setAtked = function(isAtked)
     this.isAtked = isAtked; 
 
     var data = {};
-    data.flag = MONSTER_UPDATE_ISATKED;
-    this.packData(data);
+    this.packData(data, MONSTER_UPDATE_ISATKED);
     this.player.getDuel().broadcastPacket(WC_MONSTER_UPDATE, {playerIdx: this.player.getIdx(), param: data});
 }
+
+module.exports = Monster;

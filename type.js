@@ -21,7 +21,7 @@ global.WC_CHAT_ADD = 'WC_CHAT_ADD';                     //服务端向客户端�
 //Player
 global.WC_PLAYER_ADD = 'WC_PLAYER_ADD';                 //服务端向客户端发送PLAYER添加(自己)
 global.WC_PLAYER_ADD_OTHER = 'WC_PLAYER_ADD_OTHER';     //服务端向客户端发送PLAYER添加(别人)
-global.WC_PLAYER_UPDATE = 'CW_PLAYER_UPDATE';           //服务端向客户端发送PLAYER更新
+global.WC_PLAYER_UPDATE = 'WC_PLAYER_UPDATE';           //服务端向客户端发送PLAYER更新
 
 //房间
 global.CW_DUELREADY_REQUEST = 'CW_DUELREADY_REQUEST';       //客户端向服务端发送准备开始游戏请求
