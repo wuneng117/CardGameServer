@@ -299,21 +299,21 @@ Player.prototype.summonMonster = function(cardIdx)
 
     var data = {};
     monster.packDataAll(data);
-    this.duel.broadcastPacket(WC_MONSTER_CREATE, {playerIdx: this.idx, param: data});
+    this.duel.broadcastPacket(WC_MONSTER_CREATE, {playerIdx: this.idx, data: data});
                           
                             
     //删除手牌
     this.handArray.splice(cardIdx,1);
-    this.duel.broadcastPacket(WC_HANDCARD_DELETE, {playerIdx: this.idx, idx: idx});
-    this.refreshHandIdx(this.handArray);
+    this.duel.broadcastPacket(WC_HANDCARD_DELETE, {playerIdx: this.idx, idx: cardIdx});
+    this.refreshHandIdx();
 }
 
 //干掉随从
 Player.prototype.killMonster = function(idx) 
 {    
-    this.handArray.splice(idx,1);
-    this.duel.broadcastPacket(WC_HANDCARD_DELETE, {playerIdx: this.idx, idx: idx});
-    this.refreshMonsterIdx(this.handArray);
+    this.fieldArray.splice(idx,1);
+    this.duel.broadcastPacket(WC_MONSTER_DELETE, {playerIdx: this.idx, idx: idx});
+    this.refreshMonsterIdx();
 },
 
 //数组变动后需要刷新idx
@@ -334,7 +334,7 @@ Player.prototype.refreshMonsterIdx = function()
         
         var data = {};
         this.fieldArray[i].packData(data, 0);
-        this.duel.broadcastPacket(WC_MONSTER_UPDATE, {playerIdx: this.idx, idx: i});
+        this.duel.broadcastPacket(WC_MONSTER_UPDATE, {playerIdx: this.idx, data: data});
     }
 },
 

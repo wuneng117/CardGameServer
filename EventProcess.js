@@ -20,6 +20,7 @@ function EventProcess(clientConn)
     this.clientConn.registerHandler(CW_MONSTER_SUMMON_REQUEST, this[CW_MONSTER_SUMMON_REQUEST].bind(this));
     this.clientConn.registerHandler(CW_MONSTER_ATTACKPLAYER_REQUEST, this[CW_MONSTER_ATTACKPLAYER_REQUEST].bind(this));
     this.clientConn.registerHandler(CW_MONSTER_ATTACKMONSTER_REQUEST, this[CW_MONSTER_ATTACKMONSTER_REQUEST].bind(this));
+    this.clientConn.registerHandler(CW_ENDPHASE_REQUEST, this[CW_ENDPHASE_REQUEST].bind(this));
 }
 
 //失去客户端连接
@@ -112,6 +113,13 @@ EventProcess.prototype.CW_MONSTER_ATTACKMONSTER_REQUEST = function(msg)
     duel.monsterAtkMonster(player, msg.idx, msg.targetPlayerIdx, msg.targetMonsterIdx);
 }
 
+//客户端发送结束回合请求
+EventProcess.prototype.CW_ENDPHASE_REQUEST = function(msg)
+{
+    var player = this.clientConn.getPlayer();
+    var duel = player.getDuel();
+    duel.changePhase(PHASE_END_TURN);
+}
 
 
 

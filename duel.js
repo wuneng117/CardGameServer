@@ -130,9 +130,9 @@ Duel.prototype.getNextPlayer = function()
         else
             idx++;
     }
-    while(player.getTeamColor() === TEAM_COLOR_NONE);
+    while(this.playerVec[idx].getTeamColor() === TEAM_COLOR_NONE);
 
-    this.turnPlayer = player;
+    this.turnPlayer = this.playerVec[idx];
 }
 
 //有玩家已经准备就绪
@@ -208,7 +208,7 @@ Duel.prototype.handCardCreate = function(player, card)
         else
             card.packDataAll(data, true);
 
-        temp.getClientConn().sendPacket(WC_HANDCARD_CREATE, {playerIdx: player.getIdx(), param: data});
+        temp.getClientConn().sendPacket(WC_HANDCARD_CREATE, {playerIdx: player.getIdx(), data: data});
     }
 }
 
@@ -224,7 +224,7 @@ Duel.prototype.handCardUpdate = function(player, card, flag)
         else
             card.packData(data, flag, true);
 
-        temp.getClientConn().sendPacket(WC_HANDCARD_UPDATE, {playerIdx: player.getIdx(), param: data});
+        temp.getClientConn().sendPacket(WC_HANDCARD_UPDATE, {playerIdx: player.getIdx(), data: data});
     }
 }
 
@@ -251,7 +251,7 @@ Duel.prototype.monsterAtkPlayer = function(player, idx, targetPlayerIdx)
      
     monster.setAtked(true);
 
-    targetPlayer.reduceHp(atk);
+    targetPlayer.reduceHp(monster.atk);
 
     this.checkWin();
 }
@@ -284,10 +284,10 @@ Duel.prototype.monsterAtkMonster = function(player, idx, targetPlayerIdx, target
      
 
     monster.setAtked(true);
-    monster.reduceHp(targetMonster.atk);
-
     this.broadcastPacket(WC_CHAT_ADD, {message: player.getPlayerName() + ' 的随从 ' + monster.cardName + ' 收到了' + targetMonster.atk + '伤害',
                                        isSystem: true});
+    monster.reduceHp(targetMonster.atk);
+
     targetMonster.reduceHp(monster.atk);
     this.broadcastPacket(WC_CHAT_ADD, {message: targetPlayer.getPlayerName() + ' 的随从 ' + targetMonster.cardName + ' 收到了' + monster.atk + '伤害',
                                        isSystem: true});
@@ -331,7 +331,7 @@ Duel.prototype.checkWin = function()
             player.getClientConn().sendPacket(WC_PLAYER_UPDATE, data);
         }
 
-        this.broadcastPacket(WC_CHAT_ADD, {message: tempVec[0].getPlayerName() + '的胜利', isSystem: true});
+        this.broadcastPacket(WC_CHAT_ADD, {message: tempVec[1].getPlayerName() + '的胜利', isSystem: true});
     }
     else if(hp1 <= 0)
     {
@@ -344,7 +344,7 @@ Duel.prototype.checkWin = function()
             player.getClientConn().sendPacket(WC_PLAYER_UPDATE, data);
         }
 
-        this.broadcastPacket(WC_CHAT_ADD, {message: tempVec[1].getPlayerName() + '的胜利', isSystem: true});
+        this.broadcastPacket(WC_CHAT_ADD, {message: tempVec[0].getPlayerName() + '的胜利', isSystem: true});
 
     }
 },
@@ -356,6 +356,7 @@ Duel.prototype.changeTurnPlayer = function()
     this.getNextPlayer();
     this.turnPlayer.setTurnActive(true);    //可行动
 
+    console.log(this.turnPlayer.getPlayerName());
     var data = {};
     this.turnPlayer.packData(data, PLAYER_UPDATE_ISTURNACTIVE);
     this.turnPlayer.getClientConn().sendPacket(WC_PLAYER_UPDATE, data);
@@ -383,6 +384,8 @@ Duel.prototype.enterPhaseBegin = function()
         this.turnPlayer.criticalRecover();      //回复水晶
         this.turnPlayer.awakenMonster();        //重置随从攻击次数
         this.turnPlayer.drawDeck(1);            //抽1张卡
+
+        this.changePhase(PHASE_MAIN_TURN);
 }
 
 Duel.prototype.leavePhaseBegin = function()
@@ -402,7 +405,7 @@ Duel.prototype.leavePhaseMain = function()
 
 Duel.prototype.enterPhaseEnd = function()
 {
-
+    this.changePhase(PHASE_BEGIN_TURN);
 }
 
 Duel.prototype.leavePhaseEnd = function()
@@ -410,6 +413,7 @@ Duel.prototype.leavePhaseEnd = function()
     this.turnPlayer.setTurnActive(false);
 
     var data = {};
+    console.log("active false:"+this.turnPlayer.getPlayerName());
     this.turnPlayer.packData(data, PLAYER_UPDATE_ISTURNACTIVE);
     this.turnPlayer.getClientConn().sendPacket(WC_PLAYER_UPDATE, data);
 }
@@ -421,8 +425,8 @@ Duel.prototype.leavePhaseEnd = function()
         this.leaveTurnFunc[this.phaseState]();
     }
     
-    this.enterTurnFunc[nextState]();
     this.phaseState = nextState;
+    this.enterTurnFunc[nextState]();
 }
 //-------------------------------------------------------------------------------\\
 

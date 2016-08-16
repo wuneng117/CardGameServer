@@ -116,7 +116,7 @@ Monster.prototype.reduceHp = function(num)
     {
         var data = {};
         this.packData(data, MONSTER_UPDATE_HP);
-        this.player.getDuel().broadcastPacket(WC_MONSTER_UPDATE, {playerIdx: this.player.getIdx(), param: data});
+        this.player.getDuel().broadcastPacket(WC_MONSTER_UPDATE, {playerIdx: this.player.getIdx(), data: data});
     }
 }
 
@@ -132,7 +132,7 @@ Monster.prototype.addHp = function(num)
     
     var data = {};
     this.packData(data, MONSTER_UPDATE_HP);
-    this.player.getDuel().broadcastPacket(WC_MONSTER_UPDATE, {playerIdx: this.player.getIdx(), param: data});
+    this.player.getDuel().broadcastPacket(WC_MONSTER_UPDATE, {playerIdx: this.player.getIdx(), data: data});
 }
 
 Monster.prototype.isDead = function() 
@@ -153,7 +153,7 @@ Monster.prototype.setAtked = function(isAtked)
 
     var data = {};
     this.packData(data, MONSTER_UPDATE_ISATKED);
-    this.player.getDuel().broadcastPacket(WC_MONSTER_UPDATE, {playerIdx: this.player.getIdx(), param: data});
+    this.player.getDuel().broadcastPacket(WC_MONSTER_UPDATE, {playerIdx: this.player.getIdx(), data: data});
 }
 
 module.exports = Monster;
