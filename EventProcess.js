@@ -2,8 +2,9 @@ const DBConn = require('DBConn')
 
 var ERROR_NOERROR = 0;
 
-var ERROR_ENTERROOM_INROOM = 1;
-var ERROR_DUELREADY_ISPLAYING = 1;
+var ERROR_ENTERROOM_INROOM      = 1;
+
+var ERROR_DUELREADY_ISPLAYING   = 1;
 
 
 function EventProcess(clientConn)
@@ -12,15 +13,15 @@ function EventProcess(clientConn)
     //console.log(typeof(this.clientConn));
 
     //注册消息处理函数
-    this.clientConn.registerHandler('disconnect', this.disconnect.bind(this));
-    this.clientConn.registerHandler(CW_LOGIN_REQUEST, this[CW_LOGIN_REQUEST].bind(this));
-    this.clientConn.registerHandler(CW_ENTERROOM_REQUEST, this[CW_ENTERROOM_REQUEST].bind(this));
-    this.clientConn.registerHandler(CW_CHAT_ADD_REQUEST, this[CW_CHAT_ADD_REQUEST].bind(this));
-    this.clientConn.registerHandler(CW_DUELREADY_REQUEST, this[CW_DUELREADY_REQUEST].bind(this));
-    this.clientConn.registerHandler(CW_MONSTER_SUMMON_REQUEST, this[CW_MONSTER_SUMMON_REQUEST].bind(this));
-    this.clientConn.registerHandler(CW_MONSTER_ATTACKPLAYER_REQUEST, this[CW_MONSTER_ATTACKPLAYER_REQUEST].bind(this));
-    this.clientConn.registerHandler(CW_MONSTER_ATTACKMONSTER_REQUEST, this[CW_MONSTER_ATTACKMONSTER_REQUEST].bind(this));
-    this.clientConn.registerHandler(CW_ENDPHASE_REQUEST, this[CW_ENDPHASE_REQUEST].bind(this));
+    this.clientConn.registerHandler('disconnect',           this.disconnect.bind(this));
+    this.clientConn.registerHandler(CW_LOGIN_REQUEST,       this[CW_LOGIN_REQUEST].bind(this));
+    this.clientConn.registerHandler(CW_ENTERROOM_REQUEST,   this[CW_ENTERROOM_REQUEST].bind(this));
+    this.clientConn.registerHandler(CW_CHAT_ADD_REQUEST,    this[CW_CHAT_ADD_REQUEST].bind(this));
+    this.clientConn.registerHandler(CW_DUELREADY_REQUEST,   this[CW_DUELREADY_REQUEST].bind(this));
+    this.clientConn.registerHandler(CW_MONSTER_SUMMON_REQUEST,          this[CW_MONSTER_SUMMON_REQUEST].bind(this));
+    this.clientConn.registerHandler(CW_MONSTER_ATTACKPLAYER_REQUEST,    this[CW_MONSTER_ATTACKPLAYER_REQUEST].bind(this));
+    this.clientConn.registerHandler(CW_MONSTER_ATTACKMONSTER_REQUEST,   this[CW_MONSTER_ATTACKMONSTER_REQUEST].bind(this));
+    this.clientConn.registerHandler(CW_ENDPHASE_REQUEST,                this[CW_ENDPHASE_REQUEST].bind(this));
 }
 
 //失去客户端连接
@@ -32,11 +33,10 @@ EventProcess.prototype.disconnect = function()
 //客户端登录请求
 EventProcess.prototype[CW_LOGIN_REQUEST] = function(param) 
 {
-    //console.log(msg);
     var callback = function(error, user) {
         //登录成功
         if(error === LOGIN_ERROR_NOERROR)
-            this.clientConn.login(user);
+            error = this.clientConn.login(user);
 
         this.clientConn.sendPacket(WC_LOGIN_RESPONSE, {error : error, account: this.clientConn.account});
     }
@@ -59,9 +59,7 @@ EventProcess.prototype[CW_ENTERROOM_REQUEST] = function()
     var server = this.clientConn.getServer();
     duel = server.getRestDuel();
     if(duel.addPlayer(player))
-    {
         this.clientConn.sendPacket(WC_ENTERROOM_RESPONSE, {error: 0, idx: player.getIdx()});
-    }
 }
 
 //客户端发送聊天信息请求(以后写)
@@ -81,9 +79,10 @@ EventProcess.prototype.CW_DUELREADY_REQUEST = function(msg)
         return;
     }
 
-    player.getReady();
+    player.setReady(true);
     this.clientConn.sendPacket(WC_DUELREADY_RESPONSE, {error: 0, idx: player.getIdx()});
     
+    //检查是否可以开始游戏
     duel.playerGetReady(player);
 }
 
@@ -101,6 +100,9 @@ EventProcess.prototype.CW_MONSTER_SUMMON_REQUEST = function(msg)
 EventProcess.prototype.CW_MONSTER_ATTACKPLAYER_REQUEST = function(msg)
 { 
     var player = this.clientConn.getPlayer();
+    if(!player.getTurnActive())
+        return;
+
     var duel = player.getDuel();
     duel.monsterAtkPlayer(player, msg.idx, msg.targetPlayerIdx);
 }
@@ -109,6 +111,9 @@ EventProcess.prototype.CW_MONSTER_ATTACKPLAYER_REQUEST = function(msg)
 EventProcess.prototype.CW_MONSTER_ATTACKMONSTER_REQUEST = function(msg)
 {
     var player = this.clientConn.getPlayer();
+    if(!player.getTurnActive())
+        return;
+
     var duel = player.getDuel();
     duel.monsterAtkMonster(player, msg.idx, msg.targetPlayerIdx, msg.targetMonsterIdx);
 }
@@ -117,6 +122,9 @@ EventProcess.prototype.CW_MONSTER_ATTACKMONSTER_REQUEST = function(msg)
 EventProcess.prototype.CW_ENDPHASE_REQUEST = function(msg)
 {
     var player = this.clientConn.getPlayer();
+    if(!player.getTurnActive())
+        return;
+        
     var duel = player.getDuel();
     duel.changePhase(PHASE_END_TURN);
 }

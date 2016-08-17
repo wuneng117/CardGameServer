@@ -1,7 +1,3 @@
-var CARD_UPDATE_CARDNAME = 1<<1;
-var CARD_UPDATE_CRITICAL = 1<<2;
-var CARD_UPDATE_ATK = 1<<3;
-var CARD_UPDATE_HP = 1<<4;
 
 function Card()
 {
@@ -18,25 +14,25 @@ Card.prototype.init = function(cardData, player, idx)
 {
     this.critical = cardData.critical;
     this.cardName = cardData.cardName;
-    this.atk = cardData.atk;
-    this.hp = cardData.hp;
+    this.atk    = cardData.atk;
+    this.hp     = cardData.hp;
 
     this.player = player;
-    this.idx = idx;
+    this.idx    = idx;
 }
 
 //打包数据完整
 Card.prototype.packDataAll = function(data, hide)
 {
-    data.idx = this.idx;
-    data.hide = hide;
+    data.idx    = this.idx;
+    data.hide   = hide;
     if(hide)
         return;
     
     data.cardName = this.cardName;
     data.critical = this.critical;
-    data.atk = this.atk;
-    data.hp = this.hp;
+    data.atk    = this.atk;
+    data.hp     = this.hp;
 }
 
 
@@ -47,16 +43,16 @@ Card.prototype.unPackDataAll = function(data)
     
     this.cardName = data.cardName;
     this.critical = data.critical;
-    this.atk = data.atk;
-    this.hp = data.hp;
+    this.atk    = data.atk;
+    this.hp     = data.hp;
 }
 
 //打包数据
 Card.prototype.packData = function(data, flag, hide)
 {
-    data.flag = flag;
-    data.idx = this.idx;
-    data.hide = hide;
+    data.flag   = flag;
+    data.idx    = this.idx;
+    data.hide   = hide;
     if(hide)
         return;
 

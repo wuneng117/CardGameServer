@@ -2,9 +2,9 @@ const EventProcess = require('EventProcess');
 const Account = require('account')
 const Player = require('player')
 
-var CLIENT_STATE_GUIDE = 0;
-var CLIENT_STATE_LOGININ = 1;
-var CLIENT_STATE_DISBAND = 2;
+var CLIENT_STATE_GUIDE      = 0;
+var CLIENT_STATE_LOGININ    = 1;
+var CLIENT_STATE_DISBAND    = 2;
 
 function ClientConn(idx, socket, server) {
     this.clientId = idx;
@@ -37,10 +37,12 @@ ClientConn.prototype.getAccountName = function()
 
 //客户端正常登录
 ClientConn.prototype.login = function(user) {
+    //检查是否重复登录
+    if(this.server.isAccountOnline(user.AccountName))
+        return LOGIN_ERROR_LOGINED;
+
     this.account = new Account(user.AccountName, user.password);
     this.state   = CLIENT_STATE_LOGININ;
-
-    //自动分配一个
 }
 
 //给客户端发送消息

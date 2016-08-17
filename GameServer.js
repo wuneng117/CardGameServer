@@ -6,9 +6,8 @@ var MAX_DUEL_NUM = 1;
 
 function GameServer()
 {
-    //客户端连接列表
-    this.clientMap = {};
-    this.clientIdx = 0;
+    this.clientMap = {};    //客户端连接列表
+    this.clientIdx = 0;     //当前分配IDX编号
 
     //游戏管理
     this.duelVec = [];
@@ -25,8 +24,18 @@ GameServer.prototype.init = function()
 //初始化数据
 GameServer.prototype.initData = function()
 {
-    global.gCardDataManager = new CardDataManager();
+    gCardDataManager = new CardDataManager();
     gCardDataManager.init();
+}
+
+//初始化游戏管理
+GameServer.prototype.initDuel = function()
+{
+    for(var i=0; i<MAX_DUEL_NUM; ++i)
+    {
+        var duel = new Duel();
+        this.duelVec.push(duel);
+    }
 }
 
 //初始化网络
@@ -41,7 +50,7 @@ GameServer.prototype.initSocket = function()
     var self = this;
 
     //有客户端连接
-    io.on('connection', function(socket){
+    io.on('connection', function(socket) {
         self.clientIdx++;
         console.log('a user connected, idx:',self.clientIdx);
         
@@ -50,23 +59,24 @@ GameServer.prototype.initSocket = function()
         self.clientMap[self.clientidx] = clientConn;
 
         //给客户端回复
-        socket.emit(WC_CONNECTED, {idx : self.clientIdx, name : '魔兽世界'});
+        socket.emit(WC_CONNECTED, {idx : self.clientIdx});
     });
 
-    http.listen(3000, function(){
+    http.listen(3000, function() {
         console.log('listening on : 3000');
     });
 }
 
-//初始化游戏管理
-GameServer.prototype.initDuel = function()
+//检查重复登录
+GameServer.prototype.isAccountOnline = function(accountName)
 {
-    for(var i=0; i<MAX_DUEL_NUM; ++i)
+    for(var clientConn of this.clientMap)
     {
-        var duel = new Duel();
-        //duel.init();
-        this.duelVec.push(duel);
+        if(clientConn && clientConn.getAccountName() == accountName)
+            return true;
     }
+
+    return false;
 }
 
 //返回空房间

@@ -1,10 +1,3 @@
-var MONSTER_UPDATE_CARDNAME = 1<<1;
-var MONSTER_UPDATE_CRITICAL = 1<<2;
-var MONSTER_UPDATE_ATK = 1<<3;
-var MONSTER_UPDATE_HP = 1<<4;
-var MONSTER_UPDATE_MAXHP = 1<<5;
-var MONSTER_UPDATE_ISATKED = 1<<6;
-
 
 function Monster()
 {
@@ -24,11 +17,11 @@ Monster.prototype.init = function(card, player, idx)
     this.cardName = card.cardName;
     this.critical = card.critical;
     this.atk = card.atk;
-    this.hp = card.hp;
+    this.hp  = card.hp;
     this.maxHp = card.hp;
     
     this.player = player;
-    this.idx = idx;        
+    this.idx    = idx;        
 }
 
 //打包数据完整
@@ -39,8 +32,8 @@ Monster.prototype.packDataAll = function(data)
     data.cardName = this.cardName;
     data.critical = this.critical;
     data.atk = this.atk;
-    data.hp = this.hp;
-    data.maxHp = this.maxHp;
+    data.hp  = this.hp;
+    data.maxHp   = this.maxHp;
     data.isAtked = this.isAtked;
 }
 
@@ -52,8 +45,8 @@ Monster.prototype.unPackDataAll = function(data)
     this.cardName = data.cardName;
     this.critical = data.critical;
     this.atk = data.atk;
-    this.hp = data.hp;
-    this.maxHp = data.maxHp;
+    this.hp  = data.hp;
+    this.maxHp   = data.maxHp;
     this.isAtked = data.isAtked;
 }
 
@@ -110,7 +103,7 @@ Monster.prototype.reduceHp = function(num)
     {
         this.player.killMonster(this.idx);
         this.player.getDuel().broadcastPacket(WC_CHAT_ADD, {message: this.player.getPlayerName() + ' 的随从 ' + this.cardName + ' 死亡了',
-                        isSystem: true});
+                                                            isSystem: true});
     }
     else
     {
@@ -146,14 +139,14 @@ Monster.prototype.isDead = function()
 
 //设置编号
 Monster.prototype.setIdx = function(idx) { this.idx = idx; }
+
 //设置攻击标志
 Monster.prototype.setAtked = function(isAtked) 
-{
+{ 
     this.isAtked = isAtked; 
-
     var data = {};
     this.packData(data, MONSTER_UPDATE_ISATKED);
-    this.player.getDuel().broadcastPacket(WC_MONSTER_UPDATE, {playerIdx: this.player.getIdx(), data: data});
+    this.player.getDuel.broadcastPacket(WC_MONSTER_UPDATE, {playerIdx: this.player.getIdx(), data: data});
 }
 
 module.exports = Monster;

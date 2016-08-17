@@ -1,10 +1,35 @@
-//回合阶段
+//回合阶段枚举
 global.PHASE_NULL = 0;
 global.PHASE_BEGIN_TURN = 1;
 global.PHASE_MAIN_TURN = 2;
 global.PHASE_END_TURN = 3;
 
-//客户端与服务端通信函数
+global.gCardDataManager = null;     //卡牌DATA管理
+
+//Player更新标志
+global.PLAYER_UPDATE_ISTURNACTIVE   = 1;
+global.PLAYER_UPDATE_HP             = 1<<1;
+global.PLAYER_UPDATE_CRITICAL       = 1<<2;
+global.PLAYER_UPDATE_MAXCRITICAL    = 1<<3;
+global.PLAYER_UPDATE_ISREADY        = 1<<4;
+global.PLAYER_UPDATE_DECKNUM        = 1<<5;
+global.PLAYER_UPDATE_TEAMCOLOR      = 1<<6;
+
+//Card更新标志
+global.CARD_UPDATE_CARDNAME = 1<<1;
+global.CARD_UPDATE_CRITICAL = 1<<2;
+global.CARD_UPDATE_ATK      = 1<<3;
+global.CARD_UPDATE_HP       = 1<<4;
+
+//Monster更新标志
+global.MONSTER_UPDATE_CARDNAME  = 1<<1;
+global.MONSTER_UPDATE_CRITICAL  = 1<<2;
+global.MONSTER_UPDATE_ATK       = 1<<3;
+global.MONSTER_UPDATE_HP        = 1<<4;
+global.MONSTER_UPDATE_MAXHP     = 1<<5;
+global.MONSTER_UPDATE_ISATKED   = 1<<6;
+
+//-------------------------------客户端与服务端通信函数----------------------------------------
 
 //登录
 global.WC_CONNECTED = 'WC_CONNECTED';           //服务端向客户端发送连接响应
@@ -47,3 +72,5 @@ global.WC_MONSTER_DELETE = 'WC_MONSTER_DELETE'; //随从删除
 //结束回合
 global.CW_ENDPHASE_REQUEST = 'CW_ENDPHASE_REQUEST';   //客户端向服务端发送回合结束请求
 global.WC_END_PHASE_RESPONSE = 'WC_END_PHASE_RESPONSE'; //服务端向客户端发送回合结束响应
+
+//----------------------------------------------------------------------------------------------------

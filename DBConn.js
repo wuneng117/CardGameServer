@@ -1,7 +1,8 @@
 //dbjoon.js
 global.LOGIN_ERROR_NOERROR = 0;
 global.LOGIN_ERROR_NOTFOUND = 1;
-global.LOGIN_ERROR_PASSWORD_ERROR = 2;
+global.LOGIN_ERROR_PASSWORD = 2;
+global.LOGIN_ERROR_LOGINED  = 3;
 
 var mysql = require('mysql');
 
